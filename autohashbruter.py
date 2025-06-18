@@ -3,7 +3,7 @@ import os
 import subprocess
 import argparse
 
-wordlist = "/usr/share/wordlists/rockyou.txt"
+#wordlist = "/usr/share/wordlists/rockyou.txt"
 
 parser = argparse.ArgumentParser()
 
@@ -11,17 +11,28 @@ parser.add_argument(
     "-d", "--directory",
     type=str,
     default="./",
-    help="Директория TXT файлов с хэшами"
+    help="Директория TXT файлов с хэшами. По умолчанию текущая директория",
+    metavar="путь"
 )
 
 parser.add_argument(
     "-o", "--output",
     type=str,
     default="cracked_hashes.txt",
-    help="Вывод данных в файл"
+    help="Вывод данных в файл. По умолчанию cracked_hashes.txt",
+    metavar="файл"
+)
+
+parser.add_argument(
+    "-w", "--wordlist",
+    type=str,
+    default="/usr/share/wordlists/rockyou.txt",
+    help="Путь до словаря. По умолчанию /usr/share/wordlists/rockyou.txt",
+    metavar="словарь"
 )
 
 args = parser.parse_args()
+
 def get_hashcat_modes(hash_value):
     result = subprocess.run(
         ['hashcat', '--identify', hash_value],
@@ -43,7 +54,7 @@ def collect_hashes_from_txt_files(directory):
     return hashes
  
 hashes = collect_hashes_from_txt_files(args.directory) # Тут список хэшей
-
+print(f"Словарь {args.wordlist}")
 print(f"Итоговый список хешей: {hashes}")
 for i in range(len(hashes)):
     mods_hashes = get_hashcat_modes(hashes[i])
@@ -51,13 +62,15 @@ for i in range(len(hashes)):
     m = 0
     for m in range(len(mods_hashes)):     
         result = None
-        output = subprocess.check_output(["hashcat",  "-m", str(mods_hashes[m]), "-a", "0", hashes[i], wordlist],  stderr=subprocess.STDOUT, text=True)
+        output = subprocess.check_output(["hashcat",  "-m", str(mods_hashes[m]), "-a", "0", hashes[i], args.wordlist],  stderr=subprocess.STDOUT, text=True)
         if "--show" in output:
             with open(args.output, "a") as file:
-                file.write(f"{subprocess.check_output(["hashcat", "-m", str(mods_hashes[m]), "-a", "0", hashes[i], wordlist, "--show"], stderr=subprocess.STDOUT, text=True)}")
+                file.write(f"{subprocess.check_output(["hashcat", "-m", str(mods_hashes[m]), "-a", "0", hashes[i], args.wordlist, "--show"], stderr=subprocess.STDOUT, text=True)}")
+            print("Успешно!")
             break
         else: 
             if "Cracked" in output:
+                print("Успешно!")
                 match = re.search(r"([a-f0-9]{32}):(.+)", output)
                 if match:
                     result = match.group(0)
